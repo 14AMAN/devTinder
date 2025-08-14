@@ -9,12 +9,8 @@ app.post("/users", async (req, res) => {
   try {
     // Ensure the table exists
     await User.sync();
-    const { username, email, password } = req.body;
-    const user = await User.create({
-      username,
-      email,
-      password,
-    });
+    const inputData = req.body;
+    const user = await User.create(inputData);
     res.status(201).json(user);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -25,11 +21,47 @@ app.get("/users", async (req, res) => {
   try {
     const email = await User.findOne({
       where: {
-        email: req.query.email,
+        email: req.body.email,
       },
     });
     console.log(email);
-    res.json(email);
+    if (!email) res.status(404).json({ error: "User not found" });
+    else res.json(email);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+// app.put("/users/", async(req, res))
+app.patch("/users", async (req, res) => {
+  try {
+    const { id, password, newPassword } = req.body;
+    const user = await User.findByPk(id);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    } else if (user.password !== password) {
+      return res.status(400).json({ error: "Incorrect pasword" });
+    } else {
+      user.password = newPassword;
+      await user.save();
+      res.json({ message: "Password updated successfully" });
+    }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete("/users", async (req, res) => {
+  try {
+    const { id, password } = req.body;
+    const user = await User.findByPk(id);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    } else if (user.password !== password) {
+      return res.status(400).json({ error: "Incorrect password" });
+    } else {
+      await user.destroy();
+      res.json({ message: "User deleted successfully" });
+    }
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
