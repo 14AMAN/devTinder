@@ -2,15 +2,42 @@ const sequelize = require("./config/database");
 const app = require("express")();
 
 const User = require("./config/models/users");
+const { validateSignUpData, validateLoginData } = require("./utils/validation");
+const becrypt = require("bcrypt");
 app.use(require("express").json());
 
 // Route to insert a new user
 app.post("/users", async (req, res) => {
   try {
+    // Validate the request body
+    validateSignUpData(req);
+    // Encryption logic can be added here if needed
+    const passwordHash = becrypt.hashSync(req.body.password, 10);
+    const {
+      firstName,
+      lastName,
+      username,
+      email,
+      age,
+      gender,
+      skills,
+      aboutMe,
+      photoUrl,
+    } = req.body;
     // Ensure the table exists
     await User.sync();
-    const inputData = req.body;
-    const user = await User.create(inputData);
+    const user = await User.create({
+      firstName: firstName,
+      lastName: lastName,
+      username: username,
+      email: email.toLowerCase(), // Ensure email is stored in lowercase
+      password: passwordHash, // Store the hashed password
+      age: age,
+      gender: gender,
+      skills: skills,
+      aboutMe: aboutMe,
+      photoUrl: photoUrl,
+    });
     res.status(201).json(user);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -19,14 +46,27 @@ app.post("/users", async (req, res) => {
 
 app.get("/users", async (req, res) => {
   try {
-    const email = await User.findOne({
+    // Validate the request body
+    validateLoginData(req);
+    // Ensure email is in lowercase
+    req.body.email = req.body.email.trim().toLowerCase();
+    const user = await User.findOne({
       where: {
         email: req.body.email,
       },
     });
-    console.log(email);
-    if (!email) res.status(404).json({ error: "User not found" });
-    else res.json(email);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    const isPasswordValid = await becrypt.compare(
+      req.body.password,
+      user.password
+    );
+    if (!isPasswordValid) {
+      return res.status(401).json({ error: "Invalid password" });
+    } else {
+      res.json(user);
+    }
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
