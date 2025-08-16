@@ -1,10 +1,13 @@
 const sequelize = require("./config/database");
 const app = require("express")();
-
+const jwt = require("jsonwebtoken");
 const User = require("./config/models/users");
 const { validateSignUpData, validateLoginData } = require("./utils/validation");
 const becrypt = require("bcrypt");
+const cookieParser = require("cookie-parser");
+const authUser = require("./middleware/auth");
 app.use(require("express").json());
+app.use(cookieParser()); // Middleware to parse cookies
 
 // Route to insert a new user
 app.post("/users", async (req, res) => {
@@ -30,7 +33,7 @@ app.post("/users", async (req, res) => {
       firstName: firstName,
       lastName: lastName,
       username: username,
-      email: email.toLowerCase(), // Ensure email is stored in lowercase
+      email: email.trim().toLowerCase(), // Ensure email is stored in lowercase
       password: passwordHash, // Store the hashed password
       age: age,
       gender: gender,
@@ -58,49 +61,60 @@ app.get("/users", async (req, res) => {
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
-    const isPasswordValid = await becrypt.compare(
-      req.body.password,
-      user.password
-    );
+    const isPasswordValid = await user.validatePassword(req.body.password);
     if (!isPasswordValid) {
       return res.status(401).json({ error: "Invalid password" });
     } else {
-      res.json(user);
+      const token = await user.getJWT();
+      // Optionally, you can remove the password from the response
+      res.cookie("token", token, {
+        httpOnly: true, // Prevents client-side JavaScript from accessing the cookie
+        secure: process.env.NODE_ENV === "production", // Use secure cookies in production
+        maxAge: 3600000, // 1 hour
+      });
+      res.json("Login successful");
     }
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 // app.put("/users/", async(req, res))
-app.patch("/users", async (req, res) => {
+app.patch("/users", authUser, async (req, res) => {
   try {
-    const { id, password, newPassword } = req.body;
+    const { password, newPassword } = req.body;
+    const { id } = req.user; // Get user ID from the authenticated request
+    const hashedNewPassword = await becrypt.hash(newPassword, 10);
     const user = await User.findByPk(id);
     if (!user) {
       return res.status(404).json({ error: "User not found" });
-    } else if (user.password !== password) {
-      return res.status(400).json({ error: "Incorrect pasword" });
-    } else {
-      user.password = newPassword;
+    } else if (await becrypt.compare(password, user.password)) {
+      user.password = hashedNewPassword;
       await user.save();
       res.json({ message: "Password updated successfully" });
+    } else {
+      return res.status(400).json({ error: "Incorrect pasword" });
     }
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-app.delete("/users", async (req, res) => {
+app.delete("/users", authUser, async (req, res) => {
   try {
-    const { id, password } = req.body;
+    const { email, password } = req.body;
+    const { id } = req.user; // Get user ID from the authenticated request
     const user = await User.findByPk(id);
     if (!user) {
       return res.status(404).json({ error: "User not found" });
-    } else if (user.password !== password) {
-      return res.status(400).json({ error: "Incorrect password" });
-    } else {
+    } else if (
+      email === user.email &&
+      (await becrypt.compare(password, user.password))
+    ) {
       await user.destroy();
-      res.json({ message: "User deleted successfully" });
+      res.clearCookie("token"); // Clear the cookie after deletion
+      res.json({ message: "User deleted successfully and logged out" });
+    } else {
+      return res.status(400).json({ error: "Invalid Crediatials" });
     }
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -120,6 +134,11 @@ app.delete("/users", async (req, res) => {
 // });
 
 // Test the database connection
+app.get("/profile", authUser, async (req, res) => {
+  //
+  const isTokenValid = req.user; // Access the user info from the request
+  res.send((await User.findByPk(isTokenValid.id)) || "Profile is empty.");
+});
 sequelize
   .authenticate()
   .then(() => {

@@ -1,6 +1,8 @@
 const { DataTypes } = require("sequelize");
 const validate = require("validator");
 const sequelize = require("../database");
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 
 const User = sequelize.define(
   "user",
@@ -126,5 +128,14 @@ const User = sequelize.define(
     },
   }
 );
+
+User.prototype.validatePassword = async function (inputPassword) {
+  return await bcrypt.compareSync(inputPassword, this.password);
+};
+User.prototype.getJWT = async function () {
+  return await jwt.sign({ id: this.id, email: this.email }, "aman@123", {
+    expiresIn: "1h", // Token expiration time
+  });
+};
 
 module.exports = User;
