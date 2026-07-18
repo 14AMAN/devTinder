@@ -1,0 +1,17 @@
+1. Software development lifecycle (Waterfall model)
+   a. Requirement Gathering
+   b. Desing 
+   c. Development
+   d. Testing
+   e. Development
+   f. Maintainance
+
+--> Requirement Gathering:
+   1. Create an account
+   2. Login
+   3. update Your profile
+   4. Feed page - explore
+   5. Send Connection Request
+   6. See our matches
+   7. See the Request we've sent/receive
+   8. Update your profile
