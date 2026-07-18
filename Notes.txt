@@ -31,3 +31,12 @@
    POST   /reviewRequest    -accept, reject
    GET    /requests         -View the pending requests 
    GET    /Connection       - See all the connections
+
+--> Creating the server
+   1. npm init
+   2. node app.js
+   3. npm i express
+   4. Create a server
+   5. Listen at a port
+   6. Write requset handlers
+   7. install nodemon, and update the package.json
