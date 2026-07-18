@@ -15,3 +15,19 @@
    6. See our matches
    7. See the Request we've sent/receive
    8. Update your profile
+
+--> DB Design :
+   --User :- First name, mid name, last name, email, password, age, gender.
+   --ConnectionRequest :- FromUID, ToUID, status {pending, reject, accept, ignored}
+
+--> API:
+   POST   /signup           -User Registration
+   POST   /Login            -User Authentication
+   GET    /profile          -Get the profile
+   POST   /profile          -POST the profile 
+   PATCH  /profile          -Update the profile
+   DELETE /profile          -DELETE profile
+   POST   /SendRequest      -Ignore, interested
+   POST   /reviewRequest    -accept, reject
+   GET    /requests         -View the pending requests 
+   GET    /Connection       - See all the connections
